@@ -1,0 +1,64 @@
+---
+- hosts: glusterd
+  tasks:
+  - name: install epel-release
+    ansible.builtin.yum:
+      name: epel-release
+      state: present
+
+  - name: install moreutils-parallel
+    ansible.builtin.yum:
+      name: moreutils-parallel
+      state: present
+
+- hosts: glusterd
+  tasks:
+  - name: dd dedicated
+    command:
+      cmd: '/usr/bin/dd if=/dev/urandom of=/mnt/poc0/dd.1G.{{ ansible_hostname }} oflag=direct bs=1M count=1024'
+    register: dd
+  - name: dd
+    debug:
+      msg: '{{ dd }}'
+
+- hosts: glusterd
+  tasks:
+  - name: dd dedicated parallel
+    shell:
+      cmd: >
+        /usr/bin/parallel -j8 -i /bin/sh -c "dd if=/dev/urandom of=/mnt/poc0/dd.1M.{{ ansible_hostname }}.{} oflag=direct bs=1M count=1" -- {0..1023}
+    register: dd
+  - name: dd
+    debug:
+      msg: '{{ dd }}'
+
+- hosts: glusterd
+  tasks:
+  - name: dd shared
+    shell:
+      cmd: >
+        /usr/bin/dd if=/dev/urandom of=/var/tmp/dd.1G.shared bs=1M count=1024 &&
+        md5sum /var/tmp/dd.1G.shared
+    register: dd
+  - name: dd
+    debug:
+      msg: '{{ dd }}'
+
+- hosts: glusterd
+  tasks:
+  - name: cp shared
+    command: cp /var/tmp/dd.1G.shared /mnt/poc0
+    register: cp
+  - name: cp
+    debug:
+      msg: '{{ cp }}'
+
+- hosts: glusterd
+  tasks:
+  - name: md5
+    command:
+      cmd: 'find /mnt/poc0 -type f -exec md5sum {} +'
+    register: md5
+  - name: md5
+    debug:
+      msg: '{{ md5 }}'
