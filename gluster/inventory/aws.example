@@ -1,0 +1,11 @@
+[glusterd]
+one.aws.example.invalid
+two.aws.example.invalid
+
+[glusterd:vars]
+ansible_host_key_checking=false
+# glusterd_disable_ipv6=false
+
+# assuming AWS with ami-02f9d4dea18e4d394
+ansible_user=rocky
+ansible_become=true

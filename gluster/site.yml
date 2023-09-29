@@ -1,0 +1,4 @@
+---
+- hosts: glusterd
+  roles:
+  - role: glusterd

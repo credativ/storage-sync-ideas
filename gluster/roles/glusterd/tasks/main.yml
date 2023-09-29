@@ -1,0 +1,57 @@
+---
+- name: enable powertools
+  ansible.builtin.yum_repository:
+    name: powertools
+    file: Rocky-PowerTools
+    mirrorlist: https://mirrors.rockylinux.org/mirrorlist?arch=$basearch&repo=PowerTools-$releasever
+    description: Rocky Linux PowerTools
+    gpgcheck: true
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
+
+- name: install centos-release-gluster10
+  ansible.builtin.yum:
+    name: centos-release-gluster10
+    state: present
+
+- name: install glusterfs-server
+  ansible.builtin.yum:
+    name: glusterfs-server
+    state: present
+
+- name: enable glusterd
+  ansible.builtin.service:
+    name: glusterd
+    state: started
+    enabled: true
+
+- name: configure glusterd.vol
+  ansible.builtin.template:
+    dest: /etc/glusterfs/glusterd.vol
+    src: glusterd.vol.j2
+  notify:
+  - restart glusterd
+
+- meta: flush_handlers
+
+- name: Create gluster pool
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes: "{{ ansible_play_hosts }}"
+  run_once: true
+
+- name: create gluster volume
+  gluster.gluster.gluster_volume:
+    state: present
+    force: true # in case /srv is on the root partition
+    name: poc0
+    bricks: /srv/poc0
+    replicas: "{{ ansible_play_hosts | length }}"
+    cluster: "{{ ansible_play_hosts }}"
+  run_once: true
+
+- name: poc0 mount
+  mount:
+    path: /mnt/poc0
+    src: localhost:/poc0
+    fstype: glusterfs
+    state: mounted
