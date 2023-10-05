@@ -3,3 +3,6 @@
   service:
     name: glusterd
     state: restarted
+
+- name: format bricks image
+  command: mkfs.xfs /srv/poc1/bricks.img

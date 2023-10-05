@@ -55,3 +55,44 @@
     src: localhost:/poc0
     fstype: glusterfs
     state: mounted
+
+- name: poc1 nfs mount
+  mount:
+    path: /srv/poc1
+    src: "[{{ gluster_nfs_host }}]:{{ gluster_nfs_export_path }}"
+    fstype: nfs
+    state: mounted
+
+- name: create bricks image container on nfs
+  command:
+    cmd: dd if=/dev/zero of=/srv/poc1/bricks.img bs=1k seek=100000000 count=1
+    creates: /srv/poc1/bricks.img
+  notify:
+  - format bricks image
+
+- meta: flush_handlers
+
+- name: poc1 bricks mount
+  mount:
+    path: /srv/poc1/bricks
+    src: /srv/poc1/bricks.img
+    fstype: xfs
+    opts: loop
+    state: mounted
+
+- name: create gluster volume on nfs
+  gluster.gluster.gluster_volume:
+    state: present
+    name: poc1
+    bricks: /srv/poc1/bricks
+    force: true # create directly at mountpoint
+    replicas: "{{ ansible_play_hosts | length }}"
+    cluster: "{{ ansible_play_hosts }}"
+  run_once: true
+
+- name: poc1 mount
+  mount:
+    path: /mnt/poc1
+    src: localhost:/poc1
+    fstype: glusterfs
+    state: mounted

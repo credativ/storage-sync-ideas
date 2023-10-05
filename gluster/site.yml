@@ -1,4 +1,5 @@
 ---
 - hosts: glusterd
   roles:
+  - role: nfs4
   - role: glusterd

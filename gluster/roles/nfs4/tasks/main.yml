@@ -1,0 +1,25 @@
+---
+- name: install nfs-utils
+  ansible.builtin.yum:
+    name: nfs-utils
+    state: present
+
+- name: create exported directory
+  ansible.builtin.file:
+    path: '{{ gluster_nfs_export_path }}'
+    state: directory
+
+- name: configure exports
+  ansible.builtin.template:
+    dest: /etc/exports
+    src: exports.j2
+  notify:
+    - exportfs
+
+- meta: flush_handlers
+
+- name: start and enable nfs-server
+  ansible.builtin.service:
+    name: nfs-server
+    state: started
+    enabled: true
