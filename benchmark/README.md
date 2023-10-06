@@ -18,7 +18,9 @@ The benchmarks should model these scenarios:
 
 In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to refer to the two hosts used for benchmarking, `$SYNCDIR` refers to the directory that is synchronized between the two hosts, and `$SYNCDISK` refers to the block device of the physical disk backing `$SYNCDIR`. It is also assumed that `verify.fio` has been generated using `make verify.fio` and both `verify.fio` and `write.fio` from this directory have been copied to `~/` on both hosts.
 
-## Scenario 1: Writing on one side, reading on the other, working connection
+## Benchmark scenarios
+
+### Scenario 1: Writing on one side, reading on the other, working connection
 
 1. Start recording disk utilization on both hosts:
    ```
@@ -37,7 +39,7 @@ In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to ref
    ```
 5. Stop recording disk utilization on `$HOST2` with Ctrl+C and on `$HOST1` with `kill %+`.
 
-## Scenario 2: Writing on both sides, reading on both sides, working connection
+### Scenario 2: Writing on both sides, reading on both sides, working connection
 
 1. Start recording disk utilization on both hosts:
    ```
@@ -61,3 +63,11 @@ In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to ref
    root@$HOST2:$SYNCDIR/host1$ fio --output-format json ~/verify.fio > ~/write-both.fio-verify.host2.json
    ```
 6. Stop recording disk utilization on both hosts with Ctrl+C.
+
+### Scenario 3: TBD
+
+### Scenario 4: TBD
+
+## Creating a benchmark report
+
+TBD
