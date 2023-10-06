@@ -36,3 +36,28 @@ In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to ref
    root@$HOST2:$SYNCDIR$ fio  --output-format json ~/verify.fio > ~/write-one.fio-verify.host2.json
    ```
 5. Stop recording disk utilization on `$HOST2` with Ctrl+C and on `$HOST1` with `kill %+`.
+
+## Scenario 2: Writing on both sides, reading on both sides, working connection
+
+1. Start recording disk utilization on both hosts:
+   ```
+   root@$HOST1:/$ iostat -d -t -p JSON 1 $SYNCDISK | tee -i ~/write-both.disk-utilization.host1.json # Leave running in foreground
+   root@$HOST2:/$ iostat -d -t -o JSON 1 $SYNCDISK | tee -i ~/write-both.disk-utilization.host2.json # Leave running in foreground
+   ```
+2. Create per-host write directories
+   ```
+   root@$HOST1:$SYNCDIR$ mkdir host1 && cd host1
+   root@$HOST2:$SYNCDIR$ mkdir host2 && cd host2
+   ```
+3. Create load on both sides, try to start both commands at the same time
+    ```
+    root@$HOST1:$SYNCDIR/host1$ fio --output-format json ~/write.fio > ~/write-both.fio-write.host1.json
+    root@$HOST2:$SYNCDIR/host2$ fio --output-format json ~/write.fio > ~/write-both.fio-write.host2.json
+    ```
+4. Wair until synchronization completes by waiting until the disk utilization on both hosts drops to negligible levels.
+5. Verify the written data each host. Try to run both commands at the same time
+   ```
+   root@$HOST1:$SYNCDIR/host2$ fio --output-format json ~/verify.fio > ~/write-both.fio-verify.host1.json
+   root@$HOST2:$SYNCDIR/host1$ fio --output-format json ~/verify.fio > ~/write-both.fio-verify.host2.json
+   ```
+6. Stop recording disk utilization on both hosts with Ctrl+C.
