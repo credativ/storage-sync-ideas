@@ -55,3 +55,21 @@
     src: localhost:/poc0
     fstype: glusterfs
     state: mounted
+    opts: >-
+      {% set ns = namespace(str='') -%}
+      {% for i in ansible_play_hosts -%}
+      {%   if ns.str == '' -%}
+      {%     if i is search(':') -%}
+      {%       set ns.str = '[' ~ i ~ ']' -%}
+      {%     else -%}
+      {%       set ns.str = i -%}
+      {%     endif -%}
+      {%   else -%}
+      {%     if i is search(':') -%}
+      {%       set ns.str = ns.str ~ ':[' ~ i ~ ']' -%}
+      {%     else -%}
+      {%       set ns.str = ns.str ~ ':' ~ i -%}
+      {%     endif -%}
+      {%   endif -%}
+      {% endfor -%}
+      backup-volfile-servers={{ ns.str }}
