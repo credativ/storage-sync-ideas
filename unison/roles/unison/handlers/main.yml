@@ -1,0 +1,10 @@
+---
+
+- name: unison
+  service:
+    name: unison@poc
+    state: "{{ unison_master | default(false) | ternary('restarted', 'stopped') }}"
+    enabled: "{{ unison_master | default(false) }}"
+
+- name: daemon-reload
+  command: systemctl daemon-reload
