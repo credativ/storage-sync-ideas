@@ -1,0 +1,22 @@
+---
+unison:
+  hosts:
+    one.aws.example.invalid:
+      nfs_host: one.aws.example.invalid
+      unison_remote: two.aws.example.invalid
+      unison_master: true
+    two.aws.example.invalid:
+      nfs_host: two.aws.example.invalid
+      unison_remote: one.aws.example.invalid
+  vars:
+    ansible_host_key_checking: false
+    # assuming AWS with ami-02f9d4dea18e4d394
+    ansible_user: rocky
+    ansible_become: true
+    nfs_export_path: /var/nfs/poc2
+    nfs_mount_path: /mnt/poc2
+    ed25519_sync_key: | # nonfunctional dummy key
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZW
+      xpdCwgc2VkIGRvIGVpdXNtb2QgdGVtcG9yIGluY2lkaWR1bnQgdXQgbGFib3JlIGV0IGRv
+      -----END OPENSSH PRIVATE KEY-----

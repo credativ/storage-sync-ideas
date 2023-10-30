@@ -1,0 +1,13 @@
+[Unit]
+Description=unison %I sync
+Wants=network.target network-online.target
+After=network.target network-online.target
+
+[Service]
+Environment=UNISON=/var/lib/unison/%I HOME=/var/lib/unison
+ExecStart=/usr/bin/unison %I
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

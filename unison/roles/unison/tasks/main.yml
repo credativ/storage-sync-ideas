@@ -1,0 +1,47 @@
+---
+
+- file: dest=/etc/unison state=directory
+- copy: content={{ ed25519_sync_key }} dest=/etc/unison/id_ed25519 mode=0600
+- command: sh -c "ssh-keygen -yf /etc/unison/id_ed25519 > /etc/unison/id_ed25519.pub"
+- slurp: src=/etc/unison/id_ed25519.pub
+  register: pubkey
+- authorized_key: user=root state=present key={{ pubkey['content'] | b64decode }}
+- file: dest=/etc/unison/id_ed25519.pub state=absent
+
+- known_hosts:
+    path: /etc/ssh/ssh_known_hosts
+    name: "{{ unison_remote }}"
+    key: "{{ unison_remote }} ssh-rsa {{ hostvars[unison_remote].ansible_ssh_host_key_rsa_public }}"
+    state: present
+
+- copy: src=unison.rpm dest=/tmp/unison.rpm
+- yum: name=/tmp/unison.rpm disable_gpg_check=true
+- command: rm -f /tmp/unison.rpm
+
+- copy:
+    src: unison@.service
+    dest: /etc/systemd/system/unison@.service
+  notify:
+  - daemon-reload
+  - unison
+
+- file:
+    dest: /var/lib/unison/poc
+    state: directory
+
+- name: unison pref
+  template:
+    dest: /var/lib/unison/poc/poc.prf
+    src: poc.prf.j2
+  notify:
+  - unison
+- file: src=/var/lib/unison/poc/poc.prf dest=/etc/unison/poc.prf state=link
+
+- sysctl:
+    name: fs.inotify.max_user_watches
+    value: 999999
+
+- service:
+    name: unison@poc
+    state: "{{ unison_master | default(false)| ternary('started', 'stopped') }}"
+    enabled: "{{ unison_master | default(false) }}"
