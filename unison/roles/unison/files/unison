@@ -1,0 +1,6 @@
+#!/bin/sh
+
+export HOME=/var/lib/unison
+export UNISON=$HOME
+
+exec /bin/unison "$@"

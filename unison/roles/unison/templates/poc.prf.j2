@@ -1,5 +1,3 @@
-auto = true
-batch = true
 copymax = 4
 copyprog = /bin/rsync -e '/bin/ssh -i /etc/unison/id_ed25519' --inplace --compress
 copyprogrest = /bin/rsync -e '/bin/ssh -i /etc/unison/id_ed25519' --partial --inplace --compress
@@ -9,13 +7,11 @@ fastcheck = false
 group = true
 logfile = /var/log/unison.log
 owner = true
-repeat = watch
 {% if unison_remote is search(':') -%}
 root = ssh://[{{unison_remote}}]/{{nfs_mount_path}}/
 {% else -%}
 root = ssh://{{unison_remote}}/{{nfs_mount_path}}/
 {% endif -%}
 root = {{nfs_mount_path}}/
-silent = true
 sshargs = -oIdentityFile=/etc/unison/id_ed25519
 times = true

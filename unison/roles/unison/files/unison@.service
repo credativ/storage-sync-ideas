@@ -4,8 +4,7 @@ Wants=network.target network-online.target
 After=network.target network-online.target
 
 [Service]
-Environment=UNISON=/var/lib/unison/%I HOME=/var/lib/unison
-ExecStart=/usr/bin/unison %I
+ExecStart=/usr/local/bin/unison %I -repeat watch -silent -auto -batch
 Restart=always
 RestartSec=10
 

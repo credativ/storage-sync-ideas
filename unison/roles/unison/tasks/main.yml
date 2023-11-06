@@ -19,6 +19,11 @@
 - command: rm -f /tmp/unison.rpm
 
 - copy:
+    src: unison
+    dest: /usr/local/bin/unison
+    mode: 0755
+
+- copy:
     src: unison@.service
     dest: /etc/systemd/system/unison@.service
   notify:
@@ -26,16 +31,16 @@
   - unison
 
 - file:
-    dest: /var/lib/unison/poc
+    dest: /var/lib/unison
     state: directory
 
 - name: unison pref
   template:
-    dest: /var/lib/unison/poc/poc.prf
+    dest: /var/lib/unison/poc.prf
     src: poc.prf.j2
   notify:
   - unison
-- file: src=/var/lib/unison/poc/poc.prf dest=/etc/unison/poc.prf state=link
+- file: src=/var/lib/unison/poc.prf dest=/etc/unison/poc.prf state=link
 
 - sysctl:
     name: fs.inotify.max_user_watches
