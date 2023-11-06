@@ -1,5 +1,10 @@
 auto = true
 batch = true
+copymax = 4
+copyprog = /bin/rsync -e '/bin/ssh -i /etc/unison/id_ed25519' --inplace --compress
+copyprogrest = /bin/rsync -e '/bin/ssh -i /etc/unison/id_ed25519' --partial --inplace --compress
+copyquoterem = false
+copythreshold = 10240
 fastcheck = false
 group = true
 logfile = /var/log/unison.log
