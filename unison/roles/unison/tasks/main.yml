@@ -41,6 +41,10 @@
     name: fs.inotify.max_user_watches
     value: 999999
 
+- sysctl:
+    name: fs.inotify.max_queued_events
+    value: 999999
+
 - service:
     name: unison@poc
     state: "{{ unison_master | default(false)| ternary('started', 'stopped') }}"
