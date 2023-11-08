@@ -9,6 +9,7 @@ fastcheck = false
 group = true
 logfile = /var/log/unison.log
 owner = true
+prefer = {{nfs_mount_path}}/
 {% if unison_remote is search(':') -%}
 root = ssh://[{{unison_remote}}]/{{nfs_mount_path}}/
 {% else -%}
