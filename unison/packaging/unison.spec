@@ -1,5 +1,5 @@
 Name:           unison
-Version:        2.52.1
+Version:        2.53.3
 Release:        1%{?dist}
 Summary:        Unison is a file-synchronization tool for POSIX-compliant systems
 
