@@ -9,12 +9,12 @@ fastcheck = false
 group = true
 logfile = /var/log/unison.log
 owner = true
-prefer = {{nfs_mount_path}}/
+prefer = {{nfs_mount_path}}/{{profile.root}}/
 {% if unison_remote is search(':') -%}
-root = ssh://[{{unison_remote}}]/{{nfs_mount_path}}/
+root = ssh://[{{unison_remote}}]/{{nfs_mount_path}}/{{profile.root}}/
 {% else -%}
-root = ssh://{{unison_remote}}/{{nfs_mount_path}}/
+root = ssh://{{unison_remote}}/{{nfs_mount_path}}/{{profile.root}}/
 {% endif -%}
-root = {{nfs_mount_path}}/
+root = {{nfs_mount_path}}/{{profile.root}}/
 sshargs = -oIdentityFile=/etc/unison/id_ed25519
 times = true

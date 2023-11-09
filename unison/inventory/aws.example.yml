@@ -15,6 +15,11 @@ unison:
     ansible_become: true
     nfs_export_path: /var/nfs/poc2
     nfs_mount_path: /mnt/poc2
+    sync_profiles:
+      - root: path-1
+        profile: foo
+      - root: path-2
+        profile: bar
     ed25519_sync_key: | # nonfunctional dummy key
       -----BEGIN OPENSSH PRIVATE KEY-----
       TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZW

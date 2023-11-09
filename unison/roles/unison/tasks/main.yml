@@ -39,12 +39,20 @@
     state: directory
 
 - name: unison pref
-  template:
-    dest: /var/lib/unison/poc.prf
-    src: poc.prf.j2
-  notify:
-  - unison
-- file: src=/var/lib/unison/poc.prf dest=/etc/unison/poc.prf state=link
+  loop: "{{sync_profiles}}"
+  loop_control:
+    loop_var: profile
+  template: dest=/var/lib/unison/{{profile.profile}}.prf src=poc.prf.j2
+  notify: unison
+- file: src=/var/lib/unison/{{profile.profile}}.prf dest=/etc/unison/{{profile.profile}}.prf state=link
+  loop: "{{sync_profiles}}"
+  loop_control:
+    loop_var: profile
+
+- file: dest={{nfs_mount_path}}/{{profile.root}} state=directory
+  loop: "{{sync_profiles}}"
+  loop_control:
+    loop_var: profile
 
 - sysctl:
     name: fs.inotify.max_user_watches
@@ -54,7 +62,8 @@
     name: fs.inotify.max_queued_events
     value: 999999
 
-- service:
-    name: unison@poc
-    state: "{{ unison_master | default(false)| ternary('started', 'stopped') }}"
+- loop: "{{sync_profiles | map(attribute='profile') | list}}"
+  service:
+    name: "unison@{{ item }}"
+    state: "{{ unison_master | default(false) | ternary('started', 'stopped') }}"
     enabled: "{{ unison_master | default(false) }}"
