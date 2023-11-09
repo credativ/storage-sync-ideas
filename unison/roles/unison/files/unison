@@ -1,6 +1,45 @@
 #!/bin/sh
 
+set -e
+
 export HOME=/var/lib/unison
 export UNISON=$HOME
 
-exec /bin/unison "$@"
+if [ "$SSH_ORIGINAL_COMMAND" ]
+then
+pref="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1)"
+args="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1 --complement)"
+else
+pref=$1
+args="$@"
+fi
+
+PREF="$UNISON/$pref.prf"
+
+if ! [ "$pref" -a -r "$PREF" ]
+then
+    echo "Usage: $0 profilename [options]"
+    exit 1
+fi
+
+mkdir -p /run/unison
+
+LOCK="/run/unison/$pref.lock"
+
+# use pseudo-servercmd as information via SSH_ORIGINAL_COMMAND
+# to be able to pass profile name to remote unison. This *needs*
+# the proper command option in the authorized_key.
+if [ "$SSH_ORIGINAL_COMMAND" ] # ssh invocation by unison master
+then
+    # may be run multiple times from the other side (systemd + from shell)
+    exec /bin/flock --shared --conflict-exit-code 42 --wait 2 --no-fork $LOCK /bin/unison $args -servercmd $pref
+elif [ "$INVOCATION_ID" ] # local systemd invocation
+then
+    # Do not allow any other invocation in daemon mode (ssh or systemd)
+    exec /bin/flock --exclusive --conflict-exit-code 42 --wait 2 --no-fork $LOCK /bin/unison $args -servercmd $pref
+else
+    # do not use locking on this side, as we want to run unison even when the daemon is running locally.
+    # Instead rely on a potential remote exclusive lock which will make this run fail if a remote
+    # systemd service is running.
+    exec /bin/unison $args -servercmd $pref
+fi
