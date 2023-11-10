@@ -7,11 +7,9 @@ export UNISON=$HOME
 
 if [ "$SSH_ORIGINAL_COMMAND" ]
 then
-pref="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1)"
-args="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1 --complement)"
+pref="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1 | base64 -d)"
 else
-pref=$1
-args="$@"
+pref="$1"
 fi
 
 PREF="$UNISON/$pref.prf"
@@ -32,14 +30,15 @@ LOCK="/run/unison/$pref.lock"
 if [ "$SSH_ORIGINAL_COMMAND" ] # ssh invocation by unison master
 then
     # may be run multiple times from the other side (systemd + from shell)
-    exec /bin/flock --shared --conflict-exit-code 42 --wait 2 --no-fork $LOCK /bin/unison $args -servercmd $pref
+    args="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1 --complement)"
+    exec /bin/flock --shared --conflict-exit-code 42 --wait 2 --no-fork "$LOCK" /bin/unison $args
 elif [ "$INVOCATION_ID" ] # local systemd invocation
 then
     # Do not allow any other invocation in daemon mode (ssh or systemd)
-    exec /bin/flock --exclusive --conflict-exit-code 42 --wait 2 --no-fork $LOCK /bin/unison $args -servercmd $pref
+    exec /bin/flock --exclusive --conflict-exit-code 42 --wait 2 --no-fork "$LOCK" /bin/unison "$@" -servercmd "$(echo $1 | base64)"
 else
     # do not use locking on this side, as we want to run unison even when the daemon is running locally.
     # Instead rely on a potential remote exclusive lock which will make this run fail if a remote
     # systemd service is running.
-    exec /bin/unison $args -servercmd $pref
+    exec /bin/unison "$@" -servercmd "$(echo $1 | base64)"
 fi
