@@ -7,9 +7,15 @@ export UNISON=$HOME
 
 if [ "$SSH_ORIGINAL_COMMAND" ]
 then
-pref="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1 | base64 -d)"
+    pref="$(echo $SSH_ORIGINAL_COMMAND | cut -d' ' -f1)"
+    if [ "$pref" == "unison-rsync" ]
+    then
+        eval "exec $SSH_ORIGINAL_COMMAND"
+    else
+        pref=$(echo "$pref" | base64 -d)
+    fi
 else
-pref="$1"
+    pref="$1"
 fi
 
 PREF="$UNISON/$pref.prf"

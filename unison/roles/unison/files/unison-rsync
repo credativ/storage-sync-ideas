@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec /bin/rsync -e '/bin/ssh -i /etc/unison/id_ed25519' --rsync-path unison-rsync "$@"

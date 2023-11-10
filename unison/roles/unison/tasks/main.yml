@@ -22,10 +22,8 @@
 - yum: name=/tmp/unison.rpm disable_gpg_check=true
 - command: rm -f /tmp/unison.rpm
 
-- copy:
-    src: unison
-    dest: /usr/local/bin/unison
-    mode: 0755
+- copy: src=unison dest=/usr/local/bin/unison mode=0755
+- copy: src=unison-rsync dest=/usr/local/bin/unison-rsync mode=0755
 
 - copy:
     src: unison@.service
