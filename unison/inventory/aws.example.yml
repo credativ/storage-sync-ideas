@@ -4,7 +4,6 @@ unison:
     one.aws.example.invalid:
       nfs_host: one.aws.example.invalid
       unison_remote: two.aws.example.invalid
-      unison_master: true
     two.aws.example.invalid:
       nfs_host: two.aws.example.invalid
       unison_remote: one.aws.example.invalid
@@ -15,6 +14,7 @@ unison:
     ansible_become: true
     nfs_export_path: /var/nfs/poc2
     nfs_mount_path: /mnt/poc2
+    unison_vip: 127.0.0.42
     sync_profiles:
       - root: path-1
         profile: foo

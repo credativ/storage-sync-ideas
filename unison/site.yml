@@ -3,3 +3,4 @@
   roles:
   - role: nfs
   - role: unison
+  - role: pacemaker

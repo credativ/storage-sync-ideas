@@ -1,0 +1,24 @@
+---
+
+- yum_repository:
+    name: ha
+    file: Rocky-HighAvailability
+    mirrorlist: https://mirrors.rockylinux.org/mirrorlist?arch=$basearch&repo=HighAvailability-$releasever
+    description: Rocky Linux HighAvailability
+    gpgcheck: true
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
+
+- yum: name=pcs
+
+- template: src=corosync.conf.j2 dest=/etc/corosync/corosync.conf mode=0644
+- service: name=pacemaker state=started enabled=true
+
+- template: src=properties.xml.j2 dest=/tmp/properties.xml
+- command: cibadmin --replace --scope properties --xml-file /tmp/properties.xml
+  run_once: true
+- file: name=/tmp/properties.xml state=absent
+
+- template: src=resources.xml.j2 dest=/tmp/resources.xml
+- command: cibadmin --replace --scope resources --xml-file /tmp/resources.xml
+  run_once: true
+- file: name=/tmp/resources.xml state=absent
