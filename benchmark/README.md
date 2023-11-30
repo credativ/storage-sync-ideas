@@ -18,6 +18,12 @@ The benchmarks should model these scenarios:
 
 In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to refer to the two hosts used for benchmarking, `$SYNCDIR` refers to the directory that is synchronized between the two hosts, and `$SYNCDISK` refers to the block device of the physical disk backing `$SYNCDIR`. It is also assumed that `verify.fio` has been generated using `make verify.fio` and both `verify.fio` and `write.fio` from this directory have been copied to `~/` on both hosts.
 
+Some steps of the scenario will require waiting until synchronization of
+previously written data completes. How exactly this is done, depends on the
+underlying synchronization mechanism.  For unison, it involves checking that
+disk io of the synced-to disk sinks to negligible levels, checking the log for
+inactivity and comparing the number of files on both synchronized systems.
+
 ## Benchmark scenarios
 
 ### Scenario 1: Writing on one side, reading on the other, working connection
@@ -32,7 +38,7 @@ In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to ref
    ```
    root@$HOST1:$SYNCDIR$ fio --output-format json ~/write.fio > ~/write-one.fio-write.host1.json # Wait until all writes completed
    ```
-3. Wait until synchronization completes by waiting until the disk utilization on `$HOST2` drops to negligible levels.
+3. Wait until synchronization completes.
 4. Verify the written data on `$HOST2`:
    ```
    root@$HOST2:$SYNCDIR$ fio  --output-format json ~/verify.fio > ~/write-one.fio-verify.host2.json
@@ -56,7 +62,7 @@ In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to ref
     root@$HOST1:$SYNCDIR/host1$ fio --output-format json ~/write.fio > ~/write-both.fio-write.host1.json
     root@$HOST2:$SYNCDIR/host2$ fio --output-format json ~/write.fio > ~/write-both.fio-write.host2.json
     ```
-4. Wair until synchronization completes by waiting until the disk utilization on both hosts drops to negligible levels.
+4. Wait until synchronization completes.
 5. Verify the written data each host. Try to run both commands at the same time
    ```
    root@$HOST1:$SYNCDIR/host2$ fio --output-format json ~/verify.fio > ~/write-both.fio-verify.host1.json
