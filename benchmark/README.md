@@ -16,7 +16,14 @@ The benchmarks should model these scenarios:
 * Writing on one side with no working connection, then re-connecting and reading after the sync
 * Writing on both sides with no connection, then re-connecting and reading after the sync
 
-In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to refer to the two hosts used for benchmarking, `$SYNCDIR` refers to the directory that is synchronized between the two hosts, and `$SYNCDISK` refers to the block device of the physical disk backing `$SYNCDIR`. It is also assumed that `verify.fio` has been generated using `make verify.fio` and both `verify.fio` and `write.fio` from this directory have been copied to `~/` on both hosts.
+In the descriptions of the test scenarios, `$HOST1` and `$HOST2` are used to
+refer to the two hosts used for benchmarking, `$IP1` and `$IP2` to their
+respective IP addresses they use fro communicating to each other., `$SYNCDIR`
+refers to the directory that is synchronized between the two hosts, and
+`$SYNCDISK` refers to the block device of the physical disk backing `$SYNCDIR`.
+It is also assumed that `verify.fio` has been generated using `make verify.fio`
+and both `verify.fio` and `write.fio` from this directory have been copied to
+`~/` on both hosts.
 
 Some steps of the scenario will require waiting until synchronization of
 previously written data completes. How exactly this is done, depends on the
@@ -49,7 +56,7 @@ inactivity and comparing the number of files on both synchronized systems.
 
 1. Start recording disk utilization on both hosts:
    ```
-   root@$HOST1:/$ iostat -d -t -p JSON 1 $SYNCDISK | tee -i ~/write-both.disk-utilization.host1.json # Leave running in foreground
+   root@$HOST1:/$ iostat -d -t -o JSON 1 $SYNCDISK | tee -i ~/write-both.disk-utilization.host1.json # Leave running in foreground
    root@$HOST2:/$ iostat -d -t -o JSON 1 $SYNCDISK | tee -i ~/write-both.disk-utilization.host2.json # Leave running in foreground
    ```
 2. Create per-host write directories
@@ -70,9 +77,65 @@ inactivity and comparing the number of files on both synchronized systems.
    ```
 6. Stop recording disk utilization on both hosts with Ctrl+C.
 
-### Scenario 3: TBD
+### Scenario 3: Writing on one side, reading on the other, broken connection
 
-### Scenario 4: TBD
+1. Prevent the hosts from connecting to each other (exact command may vary if legacy ip is used):
+   ```
+   root@$HOST1:/$ ip -6 r add blackhole $IP2
+   ```
+2. Start recording disk utilization on both hosts:
+   ```
+   root@$HOST1:/$ iostat -d -t -o JSON 1 $SYNCDISK > ~/write-one-broken.disk-utilization.host1.json &
+   root@$HOST2:/$ iostat -d -t -o JSON 1 $SYNCDISK | tee -i ~/write-one-broken.disk-utilization.host2.json # Leave running in foreground
+   ```
+3. Create load on one side:
+
+   ```
+   root@$HOST1:$SYNCDIR$ fio --output-format json ~/write.fio > ~/write-one-broken.fio-write.host1.json # Wait until all writes completed
+   ```
+4. Allow hosts to re-connect:
+   ```
+   root@$HOST1:/$ ip -6 r add blackhole $IP2
+   ```
+5. Wait until synchronization completes.
+6. Verify the written data on `$HOST2`:
+   ```
+   root@$HOST2:$SYNCDIR$ fio  --output-format json ~/verify.fio > ~/write-one-broken.fio-verify.host2.json
+   ```
+7. Stop recording disk utilization on `$HOST2` with Ctrl+C and on `$HOST1` with `kill %+`.
+
+### Scenario 4: Writing on both sides, reading on both sides, broken connection
+
+1. Prevent the hosts from connecting to each other (exact command may vary if legacy ip is used):
+   ```
+   root@$HOST1:/$ ip -6 r add blackhole $IP2
+   ```
+2. Start recording disk utilization on both hosts:
+   ```
+   root@$HOST1:/$ iostat -d -t -o JSON 1 $SYNCDISK | tee -i ~/write-both-broken.disk-utilization.host1.json # Leave running in foreground
+   root@$HOST2:/$ iostat -d -t -o JSON 1 $SYNCDISK | tee -i ~/write-both-broken.disk-utilization.host2.json # Leave running in foreground
+   ```
+3. Create per-host write directories
+   ```
+   root@$HOST1:$SYNCDIR$ mkdir host1 && cd host1
+   root@$HOST2:$SYNCDIR$ mkdir host2 && cd host2
+   ```
+4. Create load on both sides, try to start both commands at the same time
+    ```
+    root@$HOST1:$SYNCDIR/host1$ fio --output-format json ~/write.fio > ~/write-both-broken.fio-write.host1.json
+    root@$HOST2:$SYNCDIR/host2$ fio --output-format json ~/write.fio > ~/write-both-broken.fio-write.host1.json
+    ```
+5. Allow hosts to re-connect:
+   ```
+   root@$HOST1:/$ ip -6 r add blackhole $IP2
+   ```
+6. Wait until synchronization completes.
+7. Verify the written data each host. Try to run both commands at the same time
+   ```
+   root@$HOST1:$SYNCDIR/host2$ fio --output-format json ~/verify.fio > ~/write-both-broken.fio-verify.host1.json
+   root@$HOST2:$SYNCDIR/host1$ fio --output-format json ~/verify.fio > ~/write-both-broken.fio-verify.host2.json
+   ```
+8. Stop recording disk utilization on both hosts with Ctrl+C.
 
 ## Creating a benchmark report
 
