@@ -11,9 +11,6 @@ check_pref () {
         echo "Usage: $0 profilename [options]"
         echo "Profile $1 does not exist"
         exit 1
-    else
-        mkdir -p /run/unison
-        LOCK="/run/unison/$1.lock"
     fi
 }
 
@@ -22,7 +19,6 @@ check_pref () {
 # the proper command option in the authorized_key.
 if [ "$SSH_ORIGINAL_COMMAND" ] # ssh invocation by unison master
 then
-    # may be run multiple times from the other side (systemd + from shell)
     eval "set -- $SSH_ORIGINAL_COMMAND"
     if [ "$1" == "unison-rsync" ]
     then
@@ -30,17 +26,9 @@ then
     else
         check_pref "$(echo "$1" | base64 -d)"
         shift
-        exec /bin/flock --shared --conflict-exit-code 42 --wait 2 --no-fork "$LOCK" /bin/unison "$@"
+        exec /bin/unison "$@"
     fi
-elif [ "$INVOCATION_ID" ] # local systemd invocation
-then
-    # Do not allow any other invocation in daemon mode (ssh or systemd)
-    check_pref "$1"
-    exec /bin/flock --exclusive --conflict-exit-code 42 --wait 2 --no-fork "$LOCK" /bin/unison "$@" -servercmd "$(echo $1 | base64 -w0)"
-else
-    # do not use locking on this side, as we want to run unison even when the daemon is running locally.
-    # Instead rely on a potential remote exclusive lock which will make this run fail if a remote
-    # systemd service is running.
+else # local systemd or shell invocation
     check_pref "$1"
     exec /bin/unison "$@" -servercmd "$(echo $1 | base64 -w0)"
 fi
