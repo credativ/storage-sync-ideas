@@ -42,3 +42,34 @@ Generell gibt es keine Garantien zu langlebigen Dateideskriptoren von zu
 synchronisierenden Daten.
 
 Systemübergreifendes File-Locking wird nicht unterstützt.
+
+# Funktionsdesign
+
+Analog zu `rsync` über SSH muss `unison` im SSH-Modus auf beiden Seiten eines
+Synchronisationspaares installiert sein. Die Seite, auf dem `unison` primär
+gestartet wird, sei es manuell über ein Terminal oder vom Service Manager,
+verbindet per SSH auf die andere Seite des Paares und führt dort eine sekundäre
+`unison`-Instanz aus.
+
+Es werden prinzipiell Änderungen beider Seiten berücksichtigt, die
+Synchronisation ist damit bidirektional. Über ein internes Archiv, das den
+Zustand des lokalen Synchronisationsverzeichnisses ("`root`") dokumentiert,
+kann Unison ermitteln, welche lokalen Änderungen seit der letzten
+Synchronisation stattgefunden haben.
+
+Wenn Unison feststellt, dass eine Datei seit dem letzten Synchronisationslauf
+nur auf einer Seite verändert worden ist, kann es diese konfliktfrei, ohne
+Nutzerinteraktion auf die andere Seite übertragen.
+
+## Konfliktresolution
+
+Konflikte entstehen, wenn zwischen zwei Synchronisationsläufen ungleichartige
+Änderungen auf beiden Seiten stattgefunden haben. Je nach Situation werden
+Konflikte unterschiedlich behandelt oder ignoriert:
+
+* Bei manuellem Aufruf des interaktiven Modus über ein Terminal kann der
+  Benutzer für jeden Konfliktfall einzeln entscheiden, welche Seite gewinnen
+  soll.
+* Im Batch-Modus werden Konflikte übersprungen, falls keine Präferenz
+  (`prefer`) definiert ist.
+* Konflikte werden automatisch aufgelöst (`prefer`).
