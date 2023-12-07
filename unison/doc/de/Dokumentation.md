@@ -94,3 +94,14 @@ Konflikte unterschiedlich behandelt oder ignoriert:
   diese punktuell zu synchronisieren. Dies verspricht eine schnellere Reaktions-
   und Synchronisationszeit. Der `unison-fsmonitor` nutzt die `inotify`-API des
   Kernels.
+
+## Übertragungsmethoden
+
+In der Standardkonfiguration synchronisiert Dateien mittels eines internen
+Übertragungsalgorithmus.
+
+Darüber hinaus ist es möglich mit den Optionen `copyprog`, `copyprogrest`,
+`copyquoterm`, `copythreshold` und `copymax` eine externe Übertragung mittels
+`rsync` zu aktivieren und zu konfigurieren.
+[Es ist möglich, dass die externe Übertragungsmöglichkeit in zukünftigen
+Versionen wegfallen wird](https://github.com/bcpierce00/unison/issues/871).
