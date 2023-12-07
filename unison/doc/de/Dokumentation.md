@@ -105,3 +105,12 @@ Darüber hinaus ist es möglich mit den Optionen `copyprog`, `copyprogrest`,
 `rsync` zu aktivieren und zu konfigurieren.
 [Es ist möglich, dass die externe Übertragungsmöglichkeit in zukünftigen
 Versionen wegfallen wird](https://github.com/bcpierce00/unison/issues/871).
+
+## Änderungserkennung
+
+Unison hat einen langsamen und einen schnelleren Änderungserkennungsmodus, der
+jeweils mit der `fastcheck`-Option einstellbar ist. Der langsame Modus bezieht
+unter die Inhalte von Dateien für eine Synchronisationsentscheidung des Inhalts
+ein, während sich der schnelle Modus auf die `mtime` und Dateigröße verlässt.
+Da die Modifikationszeit einer Datei beliebig rückdatierbar ist, kann der
+schnelle Modus Inhaltsänderungen übersehen.
