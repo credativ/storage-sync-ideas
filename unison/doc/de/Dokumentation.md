@@ -124,3 +124,122 @@ Konfiguration ergänzen, so dass der Service-Manager beispielsweise ein Profil
 im `repeat`-Modus betreibt, während ein Benutzer den einmaligen manuellen Modus
 nutzt. Das Ablageverzeichnis für Profildateien kann mit der `UNISON`
 Umgebungsvariable beeinflusst werden.
+
+## Fehlerverhalten
+
+### Unvollständige Synchronisation
+
+Nach einem oder auch während eines Synchronisationslaufs werden Statuszeilen
+folgender Form geloggt:
+
+[//]: # (@pandoc@\small@)
+> ```
+> Synchronization complete at HH:MM:SS  (X items transferred, Y skipped, 0 failed)
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+oder
+
+[//]: # (@pandoc@\small@)
+> ```
+> Synchronization incomplete at HH:MM:SS  (X items transferred, Y skipped, Z failed)
+> failed: example.txt
+> failed: example.log
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+Unaufgelöste Konfliktfälle werden als `skipped` gezählt, während
+Übertragungsfehler oder während der Übertragung veränderte Dateien als `failed`
+markiert werden. Letztere werden beim nächsten Synchronisationslauf
+abgearbeitet, und stellen damit nicht zwangsläufig ein schwerwiegendes Problem
+dar.  Es ist dennoch ratsam, das Unison-Log auf Fehlermeldungen (`Error`,
+`Failed`) hin zu überwachen, da manche Synchronisierungfehler beispielsweise
+aufgrund fehlender Berechtigungen für einzelne Dateien (z.B.
+`immutable`-Attribut) ein Dauerzustand sein könnten.
+
+[//]: # (@pandoc@\small@)
+> ```
+> Failed [file.txt]: Error in deleting:
+> Operation not permitted [unlink(/path/to/file.txt)]
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+### Neustartverhalten
+
+Der `repeat`-Modus der 2.53.3 Version ist im Gegensatz zur 2.52 Version in dem
+Sinne fehlertoleranter, dass Unison im `repeat`-Modus bei gewissen Fehlern
+nicht mehr terminiert, sondern die ausstehende Aktion nach einer Pause
+wiederholt probiert. Das ist insbesondere für den Watch-basierten
+`repeat`-Modus bei einem Verbindungsfehler zum Unison-Partner vorteilhaft, da
+`unison-fsmonitor`-Events zwischengespeichert und nach Verbindungswiederaufbau
+abgearbeitet werden können. Als zweites konkretes Beispiel erwähnt der
+[Commit](https://github.com/bcpierce00/unison/pull/830/commits/f53ad280350d6cdcb2f3f80898e5c5d8b7f2c556)
+einen Abbruch des `unison-fsmonitor`.
+
+### Terminierende Fehler
+
+In die Kategorie terminierender Fehler fallen fatale Fehler, bei denen Unison
+auch im `repeat`-Modus terminiert. Dazu gehören beispielsweise
+
+* ein unerwartet leeres Synchronisationsverzeichnis (`root`) beim Unison-Start, oder
+* Konfigurationsfehler.
+
+Ein unerwartet leeres Synchronisationsverzeichnis tritt typischerweise auf,
+wenn es sich dabei um einen Mountpoint handelt, der nicht beziehungsweise zu
+spät eingebunden wurde. Im Allgemeinen ist von temporären Mounts unterhalb der
+Synchronisationsverzeichnisse abzuraten, wenn Unison im Watch-basierten
+`repeat`-Modus betrieben werden soll, da etablierte `inotify`-Watches nicht in
+den Mountpoint übernommen werden.
+
+### Archivdateifehler
+
+Fehler aufgrund eines unerwarteten Zustands der Archivdateien sind fatal, aber
+nicht terminierend. Im Allgemeinen wird sich ein solcher Fehlerzustand jedoch
+nicht von alleine lösen.
+
+Beispiel 1:
+
+[//]: # (@pandoc@\small@)
+> ```
+> Fatal error: Internal error: On-disk archives are not identical.
+>
+> This can happen when both machines have the same hostname.
+> It can also happen when one copy of Unison has been compiled with
+> OCaml version 3 and one with OCaml version 4.
+>
+> If this is not the case and you get this message repeatedly, please:
+>   a) Send a bug report to unison-users@seas.upenn.edu (you may need
+>      to join the group before you will be allowed to post).
+>      For information, see https://github.com/bcpierce00/unison/wiki
+>   b) Move the archive files on each machine to some other directory
+>      (in case they may be useful for debugging).
+>      The archive files on this machine are in the directory
+>        /var/lib/unison
+>      and have names of the form
+>        arXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+>      where the X's are hexadecimal numbers.
+>   c) Run unison again to synchronize from scratch.
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+Beispiel 2:
+
+[//]: # (@pandoc@\small@)
+> ```
+> Fatal error: Server: End_of_file exception raised in loading archive (this indicates a bug!)
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+Beispiel 3:
+
+[//]: # (@pandoc@\small@)
+> ```
+> Fatal error: Warning: inconsistent state.
+> The archive file is missing on some hosts.
+> For safety, the remaining copies should be deleted.
+>   Archive ar9e9edd866457bb789787bf4bb290cfba on host one.example should be DELETED
+>   Archive ar9ae33d4fd332f66439606677bd2a804b on host two.example is MISSING
+> Please delete archive files as appropriate and try again
+> or invoke Unison with -ignorearchives flag.
+> ```
+[//]: # (@pandoc@\normalsize@)
