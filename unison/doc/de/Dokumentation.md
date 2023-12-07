@@ -73,3 +73,24 @@ Konflikte unterschiedlich behandelt oder ignoriert:
 * Im Batch-Modus werden Konflikte übersprungen, falls keine Präferenz
   (`prefer`) definiert ist.
 * Konflikte werden automatisch aufgelöst (`prefer`).
+
+## Betriebsmodi
+
+* `unison` kann einmalig aufgerufen werden, so dass es nach einer einzelnen
+  Synchronisierung terminiert. Bei einem interaktiven Aufruf (ohne `-batch`)
+  wird der Benutzer unter Anderem für jede Veränderung, auch ohne Konflikte, vor
+  die Wahl gestellt, in welche Richtung synchronisiert werden soll. Im
+  Batch-Modus werden keine Rückfragen gestellt, und Konfliktfälle übersprungen,
+  falls keine Präferenz definiert ist. Der Batch-Modus ist damit für Cron-Aufrufe
+  geeignet.
+
+* Der Betrieb im `repeat` Modus sorgt für eine langlebige Synchronisierung sich
+  verändernder Daten und kann damit als Systemdienst aufgesetzt werden.  Der
+  intervallbasierte `repeat`-Modus erzeugt zeitgesteuerte Synchronisationen der
+  gesamten Synchronisationsverzeichnisse und ist damit gründlich aber bei vielen
+  Daten auch potenziell langsam.
+  Der watchbasierte `repeat`-Modus nutzt das Hilfsprogramm `unison-fsmonitor`
+  um die Synchronisationsverzeichnisse auf Veränderungen zu überwachen und nur
+  diese punktuell zu synchronisieren. Dies verspricht eine schnellere Reaktions-
+  und Synchronisationszeit. Der `unison-fsmonitor` nutzt die `inotify`-API des
+  Kernels.
