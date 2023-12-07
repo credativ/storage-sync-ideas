@@ -114,3 +114,13 @@ unter die Inhalte von Dateien für eine Synchronisationsentscheidung des Inhalts
 ein, während sich der schnelle Modus auf die `mtime` und Dateigröße verlässt.
 Da die Modifikationszeit einer Datei beliebig rückdatierbar ist, kann der
 schnelle Modus Inhaltsänderungen übersehen.
+
+## Konfigurationsprofile
+
+Unison arbeitet mit Kommandozeilenoptionen oder mit Konfigurationsprofilen, so
+dass ein Aufruf von `unison <profilname>` bereits eine gewünschte
+Synchronisation anstoßen kann. Zusätzliche Kommandozeilenoptionen können die
+Konfiguration ergänzen, so dass der Service-Manager beispielsweise ein Profil
+im `repeat`-Modus betreibt, während ein Benutzer den einmaligen manuellen Modus
+nutzt. Das Ablageverzeichnis für Profildateien kann mit der `UNISON`
+Umgebungsvariable beeinflusst werden.
