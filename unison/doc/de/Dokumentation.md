@@ -243,3 +243,118 @@ Beispiel 3:
 > or invoke Unison with -ignorearchives flag.
 > ```
 [//]: # (@pandoc@\normalsize@)
+
+# Beziehen der Software
+
+Da Rocky Linux Unison in keinem seiner Repositorys anbietet, muss die Software
+aus den [Upstream-Sourcen](https://github.com/bcpierce00/unison) gebaut werden.
+Dabei werden zwei Binaries `unison` und `unison-fsmonitor`, eine
+englischsprachige `man`page und eine englischsprachige Dokumentation im
+PDF-Format erzeugt.
+
+Die Bauabhängigkeiten für Version 2.52 sind mit Hilfe der unter Rocky Linux 8
+angebotenen Repositorys erfüllbar. Ältere Versionen sind aus
+Interoperabilitätsgründen zu meiden.
+
+Diese Dokumentation empfiehlt die Nutzung von mindestens Version 2.53.1 (Stand
+Dezember 2023: 2.53.3) aufgrund der verbesserten Fehlertoleranz im
+`repeat`-Modus.  Für deren Bau wird eine höhere Ocaml-Version vorausgesetzt,
+die erst in den Repositorys von Rocky Linux 9 zur Verfügung steht. Für Rocky
+Linux 8 gilt daher folgendes Vorgehen:
+
+* Beziehen der Ocaml Source-RPM aus dem Rocky Linux 9 CRB-Repository
+  (Stand Dezember 2023: Ocaml 4.11.x)
+* Bau der bezogenen Ocaml Source-RPM unter Rocky Linux 8
+* Installation von Ocaml 4.11.x unter Rocky Linux 8
+* Bau von Unison 2.53.3
+
+Es bietet sich an, die gebauten Binaries, die `man`page und die Dokumentation
+zu paketieren. Im Anhang findet sich eine [Bauanleitung als
+`Dockerfile`](#bauanleitung).
+
+[//]: # (@pandoc@\newpage@)
+# Appendix
+
+## Bauanleitung
+
+[//]: # (@pandoc@\small@)
+
+`Dockerfile`:
+
+> ```
+> FROM rockylinux:9 AS ocaml-src
+>
+> RUN yum install -y yum-utils
+> RUN yum-config-manager --enable crb
+> WORKDIR /
+> RUN yumdownloader --source ocaml
+>
+> FROM rockylinux:8 AS ocaml-bin
+>
+> RUN yum install -y rpmdevtools rpmlint yum-utils
+> COPY --from=ocaml-src /ocaml-4.11.1-5.el9.2.src.rpm /tmp/
+> RUN yum-builddep -y /tmp/ocaml-4.11.1-5.el9.2.src.rpm
+> RUN rpmbuild --rebuild /tmp/ocaml-4.11.1-5.el9.2.src.rpm
+>
+> FROM rockylinux:8
+>
+> RUN yum install -y rpmdevtools yum-utils
+> RUN useradd build -d /build
+> USER build
+> WORKDIR /build
+> RUN rpmdev-setuptree
+> COPY unison.spec rpmbuild/SPECS/
+> RUN spectool -g -R rpmbuild/SPECS/unison.spec
+> USER root
+> COPY --from=ocaml-bin /root/rpmbuild/RPMS/x86_64/*.rpm rpmbuild/RPMS/
+> RUN yum install -y \
+>     rpmbuild/RPMS/ocaml-4.11.1-5.el8.2.x86_64.rpm \
+>     rpmbuild/RPMS/ocaml-runtime-4.11.1-5.el8.2.x86_64.rpm \
+>     rpmbuild/RPMS/ocaml-compiler-libs-4.11.1-5.el8.2.x86_64.rpm
+> RUN yum-builddep -y rpmbuild/SPECS/unison.spec
+> USER build
+> RUN rpmbuild -ba rpmbuild/SPECS/unison.spec
+> ```
+
+`unison.spec`:
+
+> ```
+> Name:           unison
+> Version:        2.53.3
+> Release:        1%{?dist}
+> Summary:        Unison is a file-synchronization tool for POSIX-compliant systems
+>
+> License:        GPLv3
+> URL:            https://github.com/bcpierce00/unison/
+> Source0:        https://github.com/bcpierce00/unison/archive/refs/tags/v%{version}.tar.gz
+>
+> BuildRequires:  ocaml texlive make
+>
+> %description
+>
+> %prep
+> %autosetup
+>
+> %build
+> make all docs
+>
+> %install
+> rm -rf $RPM_BUILD_ROOT
+> mkdir -p $RPM_BUILD_ROOT/%{_bindir}
+> mkdir -p $RPM_BUILD_ROOT/%{_docdir}/unison
+> mkdir -p $RPM_BUILD_ROOT/%{_mandir}/man1
+> cp %{_builddir}/%{name}-%{version}/src/unison $RPM_BUILD_ROOT/%{_bindir}
+> cp %{_builddir}/%{name}-%{version}/src/unison-fsmonitor $RPM_BUILD_ROOT/%{_bindir}
+> cp %{_builddir}/%{name}-%{version}/doc/unison-manual.pdf $RPM_BUILD_ROOT/%{_docdir}/unison
+> cp %{_builddir}/%{name}-%{version}/man/unison.1 $RPM_BUILD_ROOT/%{_mandir}/man1
+> gzip $RPM_BUILD_ROOT/%{_mandir}/man1/unison.1
+>
+> %files
+> %{_bindir}/*
+> %{_mandir}/*
+> %{_docdir}/*
+>
+> %clean
+> rm -rf %{buildroot} %{_builddir}
+> ```
+[//]: # (@pandoc@\normalsize@)
