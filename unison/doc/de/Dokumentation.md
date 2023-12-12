@@ -272,6 +272,144 @@ Es bietet sich an, die gebauten Binaries, die `man`page und die Dokumentation
 zu paketieren. Im Anhang findet sich eine [Bauanleitung als
 `Dockerfile`](#bauanleitung).
 
+# Beispiele
+
+Die folgenden Beispiele nutzen `passwd` und `sshpass` nur für das Demo-Setup.
+
+[//]: # (yum install passwd sshpass ncurses procps)
+
+## Demo-Setup und erster Lauf
+
+System `secondary` betreibt den SSH-Dienst.
+
+[//]: # (@pandoc@\small@)
+> ```
+> sh-4.4# podman run --name secondary -h secondary --rm \
+>     --volume "$(realpath packaging)":/packaging \
+>     --network=bridge:ip=10.88.1.2 --add-host primary:10.88.1.1 \
+>     --tty --interactive rockylinux:8
+> [root@secondary /]# yum install -y /packaging/rpms/unison-2.53.3-1.el8.x86_64.rpm
+> [root@secondary /]# yum install -y passwd
+> [root@secondary /]# echo -n somepassword | passwd --stdin root
+> [root@secondary /]# yum -y install openssh-server
+> [root@secondary /]# ssh-keygen -A
+> [root@secondary /]# /usr/sbin/sshd
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+System `primary` betreibt Unison.
+
+[//]: # (@pandoc@\small@)
+> ```
+> sh-4.4# podman run --name primary -h primary --rm \
+>     --volume "$(realpath packaging)":/packaging \
+>     --network=bridge:ip=10.88.1.1 --add-host secondary:10.88.1.2 \
+>     --tty --interactive rockylinux:8
+> [root@primary /]# yum install -y /packaging/rpms/unison-2.53.3-1.el8.x86_64.rpm
+> [root@primary /]# yum install -y sshpass openssh-clients
+> [root@primary /]# ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N ''
+> [root@primary /]# echo -n somepassword | sshpass ssh-copy-id \
+>                -i /root/.ssh/id_ed25519.pub -o StrictHostKeyChecking=no secondary
+> [root@primary /]# ssh secondary passwd -l root
+>
+> [root@primary /]# ssh secondary unison -version
+> unison version 2.53.3 (ocaml 4.11.1)
+>
+> [root@primary /]# mkdir /srv/sync && ssh secondary mkdir /srv/sync
+> [root@primary /]# unison /srv/sync/ ssh://secondary//srv/sync/ -batch -auto
+> Unison 2.53.3 (ocaml 4.11.1): Contacting server...
+> Connected [//primary//srv/sync -> //secondary//srv/sync]
+>
+> Looking for changes
+> Warning: No archive files were found for these roots, whose canonical names are:
+>     /srv/sync
+>     //secondary//srv/sync
+> This can happen either
+> because this is the first time you have synchronized these roots,
+> or because you have upgraded Unison to a new version with a different
+> archive format.
+>
+> Update detection may take a while on this run if the replicas are
+> large.
+>
+> Unison will assume that the 'last synchronized state' of both replicas
+> was completely empty.  This means that any files that are different
+> will be reported as conflicts, and any files that exist only on one
+> replica will be judged as new and propagated to the other replica.
+> If the two replicas are identical, then no changes will be reported.
+>
+> If you see this message repeatedly, it may be because one of your machines
+> is getting its address from DHCP, which is causing its host name to change
+> between synchronizations.  See the documentation for the UNISONLOCALHOSTNAME
+> environment variable for advice on how to correct this.
+>
+>
+>   Waiting for changes from server
+> Reconciling changes
+> Nothing to do: replicas have been changed only in identical ways since last sync.
+>
+> [root@primary /]# hostname | tee /srv/sync/primary
+> [root@primary /]# ssh secondary 'hostname | tee /srv/sync/secondary'
+>
+> [root@primary /]# unison /srv/sync/ ssh://secondary//srv/sync/ \
+>     -batch -auto -logfile /unison.log
+> Unison 2.53.3 (ocaml 4.11.1): Contacting server...
+> Connected [//primary//srv/sync -> //secondary//srv/sync]
+>
+> Looking for changes
+>   Waiting for changes from server
+> Reconciling changes
+> new file ---->            primary
+>          <---- new file   secondary
+>
+> 2 items will be synced, 0 skipped
+> 8 B to be synced from local to secondary
+> 10 B to be synced from secondary to local
+> Propagating updates
+> Unison 2.53.3 (ocaml 4.11.1) started propagating changes at 12:01:22.57 on 13 Dec 2023
+> [BGN] Copying primary from /srv/sync to //secondary//srv/sync
+> [BGN] Copying secondary from //secondary//srv/sync to /srv/sync
+> [END] Copying primary
+> [END] Copying secondary
+> Unison 2.53.3 (ocaml 4.11.1) finished propagating changes at 12:01:22.58 on 13 Dec 2023, 0.002 s
+> Saving synchronizer state
+> Synchronization complete at 12:01:22  (2 items transferred, 0 skipped, 0 failed)
+>
+> [root@primary /]# md5sum /srv/sync/*
+> 4272f9624c9902f8adddce9abb7b2fec  /srv/sync/primary
+> e1f5e71ebca45019df6134e857efc85a  /srv/sync/secondary
+>
+> [root@primary /]# ssh secondary 'md5sum /srv/sync/*'
+> 4272f9624c9902f8adddce9abb7b2fec  /srv/sync/primary
+> e1f5e71ebca45019df6134e857efc85a  /srv/sync/secondary
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## Repeat-Modus
+
+[//]: # (@pandoc@\small@)
+> ```
+> [root@primary /]# unison /srv/sync/ ssh://secondary//srv/sync/ -batch -auto \
+>     -logfile /unison.log -repeat watch > /dev/null 2>&1 &
+>
+> [root@primary /]# for I in {1..3}
+> > do date >> /srv/sync/primary
+> > ssh secondary 'date >> /srv/sync/secondary'
+> > sleep 3
+> > done
+>
+> [root@primary /]# grep Synchronization /unison.log
+> Synchronization complete at 12:01:22  (2 items transferred, 0 skipped, 0 failed)
+> Synchronization complete at 12:04:24  (1 item transferred, 0 skipped, 0 failed)
+> Synchronization complete at 12:04:25  (1 item transferred, 0 skipped, 0 failed)
+> Synchronization complete at 12:04:27  (2 items transferred, 0 skipped, 0 failed)
+> Synchronization complete at 12:04:30  (1 item transferred, 0 skipped, 0 failed)
+> Synchronization complete at 12:04:31  (1 item transferred, 0 skipped, 0 failed)
+>
+> [root@primary /]# kill %+
+> ```
+[//]: # (@pandoc@\normalsize@)
+
 [//]: # (@pandoc@\newpage@)
 # Appendix
 
