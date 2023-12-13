@@ -410,6 +410,129 @@ System `primary` betreibt Unison.
 > ```
 [//]: # (@pandoc@\normalsize@)
 
+# Erweitertes Setup
+
+Dieser Abschnitt beschreibt eine Möglichkeit zur Definition von
+Systemd-Service-Instanzen auf Basis von Unison-Profilen. Damit kann ein großer
+Datenpool in mehrere Untereinheiten aufgeteilt werden, deren Unison-Profile
+gegebenenfalls mit individuellen Einstellungen versehen werden.
+Das Setup sieht hier eine Nutzung als `root` vor.
+
+## Relevante Komponenten
+
+Primäres System:
+
+  - `/etc/unison/id_ed25519`
+  - [`/etc/systemd/system/unison@.service`](#systemd-service-unit)
+  - [`/usr/local/sbin/unison-testserver`](#servertest-skript) (optional)
+
+Sekundäres System:
+
+  - [`/root/.ssh/authorized_keys`](#ssh-authorized-key)
+
+Beide Systeme:
+
+  - [Installiertes `unison`](#bauanleitung)
+  - [`/usr/local/sbin/unison`](#unison-wrapper-skript)
+  - [`/usr/local/sbin/unison-rsync`](#rsync-wrapper-skript)
+  - [`/var/lib/unison/<profilname>.prf`](#demo-profil)
+
+## Komponentenbeschreibung
+
+### Privater SSH-Schlüssel
+
+Selbst wenn bereits ein privater Schlüssel für Systemdienste eingerichtet sein
+sollte, wird ein separater Schlüssel benötigt, da dessen
+Authorized-Keys-Eintrag mit einem `command`-Override versehen werden muss.
+
+### Service Unit
+
+Die im Anhang dargestellte [Service-Unit](#systemd-service-unit) startet einen
+[Unison-Wrapper](#unison-wrapper-skript) unter Angabe eines Profilnamens sowie den
+notwendigen Kommandozeilenoptionen für einen nicht-interaktiven
+Watch-Modus-Betrieb. Es wird angenommen, dass diese Optionen nicht im Profil
+definiert werden, um den Wrapper auch im interaktiven-Modus ausführen zu
+können.
+
+Der Service wird wie folgt gestartet:
+
+> ```
+> systemctl start unison@demo
+> ```
+
+Ein interaktiver Lauf kann wie folgt gestartet werden:
+
+* `/usr/local/sbin/unison demo`, oder
+* `/usr/local/sbin/unison demo -auto`, oder
+* `/usr/local/sbin/unison demo -auto -batch`
+
+### Authorized-Keys-Eintrag
+
+Der [Authorized-Keys-Eintrag](#ssh-authorized-key) für den dedizierten privaten
+SSH-Schlüssel forciert einen Aufruf des
+[Unison-Wrappers](#unison-wrapper-skript).  Unter Anderem erhält das Setup
+damit eine Symmetrie aufrecht, die es erlaubt, die primäre und sekundäre Rolle
+des Unison-Paares zu vertauschen, sofern die hier beschriebenen Komponenten auf
+beiden Seiten ausgerollt worden sind.
+
+### Unison Wrapper
+
+Im Gegensatz zum `unison`-Binary schreibt der Wrapper die Angabe eines Profils
+vor, welches auf beiden Systeme in `/var/lib/unison` (`$UNISON`) existieren
+muss. Archivdateien werden ebenfalls auf beiden Seiten in `/var/lib/unison`
+verwaltet.
+
+Falls ein konkretes Profil auf dem primären aber nicht auf dem sekundären
+System existiert, ergibt sich daraus ein nicht-terminierender Fehlerfall
+für den primären Unison-Prozess:
+
+[//]: # (@pandoc@\small@)
+> ```
+> Fatal error: Received unexpected header from the server:
+>  expected "Unison RPC\n" but received "Usage: /usr/local/sbin/unison
+>  profilename [options]\nProfile foo does not exist\n",
+> which differs at "Us".
+> This can happen because you have different versions of Unison
+> installed on the client and server machines, or because
+> your connection is failing and somebody is printing an error
+> message, or because your remote login shell is printing
+> something itself before starting Unison.
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+Eine mögliche Maßnahme ist die Aktivierung des
+[Servertests](#servertest-skript) innerhalb der
+[Service-Unit](#systemd-service-unit).
+
+### Rsync Wrapper
+
+Durch das Auslagern des `--rsh` in einen eigenen Wrapper beinhaltet die
+`copyprog`-Option der [`demo.prf`](#demo-profil) keine Leerzeichen, die im
+Rahmen einer Evaluierung Probleme bereitet hatten.
+
+### Servertest
+
+`unison` bietet eine `servertest`-Option, die genutzt werden kann, um eine
+Fehlerbedingung, die bereits vom [Unison-Wrapper](#unison-wrapper-skript) des
+sekundären Systems erkannt wird, an den primären `unison` weiterzugeben.  Das
+im Anhang dargestellte [Servertest-Skript](#servertest-skript) sorgt dafür,
+dass ein auf dem sekundären System fehlendes Profil zu einem Startfehler des
+primären Services eskaliert, während Verbindungsprobleme weiterhin
+nichtterminierend bleiben.  Leider kann dieser Fehlerfall von einem temporären
+Verbindungsproblem maskiert werden. Zudem lässt sich der Test nicht auf
+[Archivdateifehler](#archivdateifehler) verallgemeinern.
+
+
+### Profile
+
+Das [Demo-Profil](#demo-profil) aktiviert die Übertragung per `rsync` ab einer
+Dateigröße von 10MB. Da `unison` mit `root`-Rechten aufgerufen wird, ist eine
+Synchronisierung des Eigentümers und der Gruppe möglich, sowie der schreibende
+Zugriff auf `/var/log/unison.log`. Mittels der `prefer`-Option werden
+Konfliktsituationen automatisch aufgelöst, indem die lokale Seite bevorzugt
+wird. In einem produktiven Setup kann dies für manche
+Synchronisationsverzeichnise gewünscht oder unerwünscht sein.
+
 [//]: # (@pandoc@\newpage@)
 # Appendix
 
@@ -494,5 +617,136 @@ System `primary` betreibt Unison.
 >
 > %clean
 > rm -rf %{buildroot} %{_builddir}
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## Systemd Service Unit
+
+`/etc/systemd/system/unison@.service`:
+
+[//]: # (@pandoc@\small@)
+> ```
+> [Unit]
+> Description=unison %I sync
+> Wants=network.target network-online.target
+> After=network.target network-online.target
+>
+> [Service]
+> # Activate servertest script if useful for your setup
+> # ExecStartPre=/usr/local/sbin/unison-testserver %I
+> ExecStart=/usr/local/sbin/unison %I -repeat watch -silent -auto -batch
+>
+> [Install]
+> WantedBy=default.target
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## Unison-Wrapper Skript
+
+`/usr/local/sbin/unison`:
+
+[//]: # (@pandoc@\small@)
+> ```
+> #!/bin/sh
+>
+> set -e
+>
+> export HOME=/var/lib/unison
+> export UNISON=$HOME
+>
+> check_pref () {
+>     if ! [ "$1" -a -r "$UNISON/$1.prf" ]
+>     then
+>         echo "Usage: $0 profilename [options]"
+>         echo "Profile $1 does not exist"
+>         exit 1
+>     fi
+> }
+>
+> if [ "$SSH_ORIGINAL_COMMAND" ] # ssh invocation by unison master
+> then
+>     eval "set -- $SSH_ORIGINAL_COMMAND"
+>     if [ "$1" == "unison-rsync" ]
+>     then
+>         exec "$@"
+>     else
+>         check_pref "$(echo "$1" | base64 -d)"
+>         shift
+>         exec /bin/unison "$@"
+>     fi
+> else # local systemd or shell invocation
+>     check_pref "$1"
+>     exec /bin/unison "$@" -servercmd "$(echo $1 | base64 -w0)"
+> fi
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## Rsync-Wrapper Skript
+
+`/usr/local/sbin/unison-rsync`:
+
+[//]: # (@pandoc@\small@)
+> ```
+> #!/bin/sh
+>
+> exec /bin/rsync --rsync-path unison-rsync \
+>     --rsh '/bin/ssh -i /etc/unison/id_ed25519' "$@"
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## Servertest Skript
+
+`/usr/local/sbin/unison-testserver`:
+
+[//]: # (@pandoc@\small@)
+> ```
+> #!/bin/sh
+>
+> TMP="$(mktemp)"
+> RC=0
+>
+> timeout 3 /usr/local/sbin/unison "$1" -testserver -silent -terse > "$TMP" 2>&1
+>
+> if grep -ql "Fatal error: Received unexpected header from the server" "$TMP" \
+> || grep -ql "Profile $1 does not exist" "$TMP" # report locally missing file as well
+> then
+>     cat "$TMP"
+>     RC=1
+> fi
+>
+> rm -f "$TMP"
+> exit $RC
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## Demo-Profil
+
+`/var/lib/unison/demo.prf`:
+
+[//]: # (@pandoc@\small@)
+> ```
+> copymax = 4
+> copyprog = unison-rsync --inplace --compress
+> copyprogrest = unison-rsync --inplace --compress --partial
+> copythreshold = 10000
+> fastcheck = false
+> group = true
+> logfile = /var/log/unison.log
+> owner = true
+> prefer = /srv/sync/
+> root = ssh://secondary//srv/sync/
+> root = /srv/sync/
+> sshargs = -oIdentityFile=/etc/unison/id_ed25519
+> times = true
+> ```
+[//]: # (@pandoc@\normalsize@)
+
+## SSH Authorized Key
+
+`/root/.ssh/authorized_keys`:
+
+[//]: # (@pandoc@\small@)
+> ```
+> command="/usr/local/sbin/unison" ssh-ed25519 {/etc/unison/id_ed25519.pub-content}
 > ```
 [//]: # (@pandoc@\normalsize@)
