@@ -14,7 +14,7 @@ RUN rpmbuild --rebuild /tmp/ocaml-4.11.1-5.el9.2.src.rpm
 
 FROM rockylinux:8
 
-RUN yum install -y rpmdevtools yum-utils make
+RUN yum install -y rpmdevtools yum-utils
 
 RUN useradd build -d /build
 USER build
