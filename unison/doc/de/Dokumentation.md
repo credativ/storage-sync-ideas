@@ -533,6 +533,33 @@ Konfliktsituationen automatisch aufgelöst, indem die lokale Seite bevorzugt
 wird. In einem produktiven Setup kann dies für manche
 Synchronisationsverzeichnise gewünscht oder unerwünscht sein.
 
+# Sonstiges
+
+## Inotify
+
+Die vom `unison-fsmonitor` genutzte `inotify`-Queue hat eine Maximalgröße, die
+per `/proc/sys/fs/inotify/max_queued_events` definiert werden kann. Falls ein
+Prozess `inotify`-Events nicht schnell genug einliest, kann die Queue
+überlaufen und Events verloren gehen. Es ist sinnvoll, den Wert zu erhöhen, um
+Lastspitzen besser abzufangen.
+
+Darüber hinaus ist es wichtig `/proc/sys/fs/inotify/max_user_watches`
+ausreichend hoch anzusetzen, so dass `unison-fsmonitor` für das gesamte
+Synchronisationsverzeichnis (bzw. für alle Synchronisationsverzeichnisse im
+Falle mehrere Service-Instanzen) samt seiner Unterverzeichnisse
+`inotify`-Watches registrieren kann. Folgender Wert ist das absolute Minimum
+für den aktuellen Datenbestand:
+
+> ```
+> find /path/to/sync/root -type d | wc -l
+> ```
+
+## SSH Keepalive
+
+Es bietet sich an, auf dem SSH-Server `ClientAliveInterval` zu nutzen, damit
+der sekundäre Unison-Prozess bei einem harten Absturz des primären Systems
+terminiert.
+
 [//]: # (@pandoc@\newpage@)
 # Appendix
 
