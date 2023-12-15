@@ -7,7 +7,7 @@ License:        GPLv3
 URL:            https://github.com/bcpierce00/unison/
 Source0:        https://github.com/bcpierce00/unison/archive/refs/tags/v%{version}.tar.gz
 
-BuildRequires:  ocaml texlive
+BuildRequires:  ocaml texlive make
 
 %description
 

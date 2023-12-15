@@ -4,9 +4,7 @@ Wants=network.target network-online.target
 After=network.target network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/unison %I -repeat watch -silent -auto -batch
-Restart=always
-RestartSec=10
+ExecStart=/usr/local/sbin/unison %I -repeat watch -silent -auto -batch
 
 [Install]
 WantedBy=default.target

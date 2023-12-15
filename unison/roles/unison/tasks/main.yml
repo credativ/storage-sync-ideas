@@ -9,7 +9,7 @@
     user: root
     state: present
     key: "{{ pubkey['content'] | b64decode }}"
-    key_options: command="/usr/local/bin/unison"
+    key_options: command="/usr/local/sbin/unison"
 - file: dest=/etc/unison/id_ed25519.pub state=absent
 
 - known_hosts:
@@ -22,8 +22,8 @@
 - yum: name=/tmp/unison.rpm disable_gpg_check=true
 - command: rm -f /tmp/unison.rpm
 
-- copy: src=unison dest=/usr/local/bin/unison mode=0755
-- copy: src=unison-rsync dest=/usr/local/bin/unison-rsync mode=0755
+- copy: src=unison dest=/usr/local/sbin/unison mode=0755
+- copy: src=unison-rsync dest=/usr/local/sbin/unison-rsync mode=0755
 
 - copy:
     src: unison@.service
